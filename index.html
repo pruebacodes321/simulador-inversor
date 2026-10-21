@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prudente — Simulador de inversión</title>
+<style>
+:root{--bg:#f5f6f4;--card:#fff;--ink:#18231f;--muted:#68756e;--line:#e4e9e5;--green:#176b4d;--pale:#eaf4ee;--red:#b44a43;--amber:#8a641c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:var(--ink);color:#fff;font-weight:600}
+button.secondary{background:#eef1ee;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.wrap{max-width:1120px;margin:auto;padding:28px 20px 56px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:26px}
+.brand{font-size:19px;font-weight:800;letter-spacing:-.5px}
+.brand span{color:var(--green)}
+.status{font-size:12px;border:1px solid var(--line);padding:7px 10px;border-radius:99px;background:#fff;color:var(--muted)}
+h1{font-size:clamp(27px,4vw,38px);line-height:1.12;letter-spacing:-1.1px;margin:0 0 9px}
+.sub{color:var(--muted);margin:0 0 24px;max-width:700px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.metric-label{font-size:12px;color:var(--muted);margin-bottom:8px}
+.metric{font-size:clamp(21px,3vw,28px);font-weight:750;letter-spacing:-.7px}
+.small{font-size:12px;color:var(--muted);margin-top:5px}
+.layout{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 5px;letter-spacing:-.25px}
+.desc{font-size:12px;color:var(--muted);margin-bottom:16px}
+.chart{width:100%;height:220px;display:block}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:5px}
+.allocrow{margin:15px 0}
+.allochead{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.bar{height:7px;background:#edf0ed;border-radius:99px;overflow:hidden}
+.fill{height:100%;background:var(--green);border-radius:99px}
+.notice{padding:12px 14px;border-radius:12px;background:var(--pale);color:#24563f;font-size:13px;margin-top:14px}
+.notice.warn{background:#fbf3e3;color:#795817}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;border:1px solid var(--line);background:#fff;padding:10px;border-radius:10px;color:var(--ink)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th,.table td{text-align:left;padding:11px 6px;border-bottom:1px solid var(--line)}
+.table th{color:var(--muted);font-size:11px;font-weight:600}
+.table td:last-child,.table th:last-child{text-align:right}
+.decision{border-left:3px solid var(--green);padding:2px 0 2px 12px;margin:15px 0}
+.decision strong{display:block;margin-bottom:3px}
+.footer{font-size:12px;color:var(--muted);margin-top:18px}
+.wide{grid-column:1/-1}
+.positive{color:var(--green)}
+.negative{color:var(--red)}
+.empty{color:var(--muted);font-size:13px;padding:18px 0}
+.tinybtn{padding:6px 9px;font-size:12px}
+.filelabel{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;background:#fff}
+@media(max-width:760px){
+ .metrics{grid-template-columns:repeat(2,1fr)}
+ .layout{grid-template-columns:1fr}
+ .wrap{padding:20px 14px 40px}
+ .card{padding:15px}
+ .top{align-items:flex-start}
+ .status{max-width:155px;text-align:center}
+ .table{font-size:12px}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="top">
+ <div class="brand">◒ <span>prudente</span></div>
+ <div class="status" id="marketStatus">Datos de mercado: sin actualizar</div>
+</header>
+
+<h1>Invierte con calma.<br>Decide con criterio.</h1>
+<p class="sub">Un laboratorio de inversión conservadora con capital virtual configurable, horizonte de 12 meses y decisiones manuales. Ninguna operación se envía al mercado.</p>
+
+<section class="card" style="margin-bottom:18px">
+ <h2>Configura tu capital inicial</h2>
+ <div class="desc">Introduce el dinero virtual con el que quieres comenzar la simulación.</div>
+ <div class="controls">
+  <div class="field">
+   <label for="initialCapital">Capital inicial (€)</label>
+   <input id="initialCapital" type="number" min="1" step="0.01" value="1000" placeholder="Ej. 2500">
+  </div>
+  <div class="field" style="display:flex;align-items:end">
+   <button id="startSimulation" style="width:100%">Iniciar / actualizar simulación</button>
+  </div>
+ </div>
+ <div class="small">Al confirmar, se reinician las posiciones y el historial para empezar con el nuevo importe.</div>
+</section>
+
+<div class="metrics">
+ <section class="card">
+  <div class="metric-label">Patrimonio simulado</div>
+  <div class="metric" id="equity">1.000,00 €</div>
+  <div class="small" id="pnl">0,00 € · 0,00 %</div>
+ </section>
+ <section class="card">
+  <div class="metric-label">Efectivo disponible</div>
+  <div class="metric" id="cash">1.000,00 €</div>
+  <div class="small">Liquidez sin invertir</div>
+ </section>
+ <section class="card">
+  <div class="metric-label">Exposición a mercado</div>
+  <div class="metric" id="exposure">0,0 %</div>
+  <div class="small">Del patrimonio total</div>
+ </section>
+ <section class="card">
+  <div class="metric-label">Pérdida en escenario adverso</div>
+  <div class="metric" id="stress">0,00 €</div>
+  <div class="small">Prueba hipotética, no pronóstico</div>
+ </section>
+</div>
+
+<div class="layout">
+
+<section class="card">
+ <h2>Evolución del patrimonio</h2>
+ <div class="desc">Valor simulado desde el inicio · las líneas son estimaciones, no previsiones</div>
+ <svg id="chart" class="chart" viewBox="0 0 600 220" role="img" aria-label="Gráfico de evolución del patrimonio"></svg>
+ <div class="legend">
+  <span><i class="dot"></i>Patrimonio</span>
+  <span id="chartStart">Inicio: 1.000 €</span>
+ </div>
+</section>
+
+<section class="card">
+ <h2>Asignación de cartera</h2>
+ <div class="desc">Valor actual según precios introducidos o descargados</div>
+ <div id="allocation"><div class="empty">Todavía no hay activos en cartera.</div></div>
+ <div class="notice">Regla prudente: conserva una reserva de efectivo y evita concentrar demasiado capital en un solo activo.</div>
+</section>
+
+<section class="card">
+ <h2>Simular una operación</h2>
+ <div class="desc">Compra o venta virtual. Puedes usar cotizaciones actuales o introducir un precio manual.</div>
+ <div class="controls">
+  <div class="field">
+   <label for="side">Operación</label>
+   <select id="side">
+    <option value="buy">Comprar</option>
+    <option value="sell">Vender</option>
+   </select>
+  </div>
+  <div class="field">
+   <label for="ticker">Activo / símbolo</label>
+   <input id="ticker" value="VWCE" maxlength="20" placeholder="Ej. VWCE, EUNL, AGGH">
+  </div>
+  <div class="field">
+   <label for="price">Precio por unidad (€)</label>
+   <input id="price" type="number" min="0.01" step="0.01" value="120">
+  </div>
+  <div class="field">
+   <label for="amount">Importe (€)</label>
+   <input id="amount" type="number" min="1" step="1" value="100">
+  </div>
+ </div>
+ <div class="small" id="tradeHint">La compra no podrá superar el efectivo disponible.</div>
+ <div class="actions">
+  <button id="trade">Simular operación</button>
+  <button class="secondary" id="quote">Buscar cotización</button>
+ </div>
+ <div class="footer">La búsqueda intenta consultar Stooq desde el navegador. Si el proveedor no permite acceso o no reconoce el símbolo, introduce la cotización manualmente.</div>
+</section>
+
+<section class="card">
+ <h2>Copiloto prudente</h2>
+ <div class="desc">Reglas transparentes; no es asesoramiento financiero personalizado.</div>
+ <div id="advice"></div>
+ <div class="decision">
+  <strong>Disciplina de riesgo</strong>
+  <span class="small">Límite inicial sugerido: no invertir más del 40 % del patrimonio en activos de mercado en este perfil de prueba.</span>
+ </div>
+ <div class="actions">
+  <button class="secondary" id="scenario">Probar caída del 10 %</button>
+  <button class="secondary" id="reset">Reiniciar simulación</button>
+ </div>
+</section>
+
+<section class="card wide">
+ <h2>Posiciones y registro</h2>
+ <div class="desc">Operaciones virtuales registradas en esta sesión. Las posiciones se valoran al último precio introducido.</div>
+ <div id="positions"></div>
+ <h2 style="margin-top:24px">Historial de operaciones</h2>
+ <div id="history"></div>
+</section>
+
+<section class="card wide">
+ <h2>Importar precios históricos (CSV)</h2>
+ <div class="desc">Carga un CSV con columnas fecha y valor para dibujar una serie histórica real. No se envían tus archivos a ningún servidor.</div>
+ <label class="filelabel">Seleccionar CSV <input id="csv" type="file" accept=".csv,text/csv" hidden></label>
+ <span class="small" id="csvStatus" style="margin-left:10px">Sin archivo importado</span>
+ <div class="footer">El CSV debe incluir una columna de fecha y otra numérica (por ejemplo, Date, Close). Los datos históricos no garantizan resultados futuros.</div>
+</section>
+
+<p class="footer wide">Aviso: prototipo educativo. Cotizaciones y datos históricos pueden tener retraso o no estar disponibles. No contempla impuestos, diferenciales, comisiones ni inflación. No es una recomendación de compra o venta.</p>
+</div>
+</main>
+
+<script>
+let START = 1000;
+const MAX_EXPOSURE = 0.40;
+
+let cash = START;
+let positions = {};
+let history = [];
+let points = [{label:"Inicio", value:START}];
+let importedSeries = null;
+
+const eur = n => new Intl.NumberFormat('es-ES', {
+ style:'currency',
+ currency:'EUR'
+}).format(n);
+
+const pct = n =>
+ (n * 100).toLocaleString('es-ES', {maximumFractionDigits:2}) + ' %';
+
+const safe = s => String(s).replace(/[&<>"']/g, c => ({
+ '&':'&amp;',
+ '<':'&lt;',
+ '>':'&gt;',
+ '"':'&quot;',
+ "'":'&#39;'
+}[c]));
+
+function invested() {
+ return Object.values(positions).reduce((s,p) => s + p.qty*p.price, 0);
+}
+
+function equity() {
+ return cash + invested();
+}
+
+function exposure() {
+ return equity() > 0 ? invested()/equity() : 0;
+}
+
+function renderChart() {
+ const svg = document.getElementById('chart');
+ let arr = importedSeries || points;
+
+ if (arr.length < 2) {
+  arr = [
+   {label:"Inicio", value:START},
+   {label:"Actual", value:equity()}
+  ];
+ }
+
+ const vals = arr.map(x => x.value);
+ const min = Math.min(...vals, START) * 0.985;
+ const max = Math.max(...vals, START) * 1.015;
+ const span = max-min || 1;
+
+ const coords = arr.map((p,i) => [
+  32+i*(540/(arr.length-1)),
+  185-(p.value-min)/span*155
+ ]);
+
+ const grid = [30,80,130,185].map(y =>
+  `<line x1="32" y1="${y}" x2="572" y2="${y}" stroke="#edf0ed"/>`
+ ).join('');
+
+ const line = coords.map(p => p.join(',')).join(' ');
+ const area = `32,185 ${line} 572,185`;
+
+ svg.innerHTML = grid +
+  `<polygon points="${area}" fill="#eaf4ee"/>` +
+  `<polyline points="${line}" fill="none" stroke="#176b4d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+  `<text x="32" y="15" font-size="11" fill="#68756e">${eur(max)}</text>` +
+  `<text x="32" y="208" font-size="11" fill="#68756e">${eur(min)}</text>`;
+}
+
+function render() {
+ const inv = invested();
+ const total = equity();
+ const profit = total-START;
+
+ document.getElementById('equity').textContent = eur(total);
+ document.getElementById('chartStart').textContent = 'Inicio: '+eur(START);
+ document.getElementById('cash').textContent = eur(cash);
+
+ document.getElementById('pnl').textContent =
+  `${profit>=0?'+':''}${eur(profit)} · ${pct(profit/START)}`;
+
+ document.getElementById('pnl').className =
+  'small '+(profit<0?'negative':'positive');
+
+ document.getElementById('exposure').textContent = pct(exposure());
+
+ const stress = Object.values(positions).reduce(
+  (s,p) => s+p.qty*p.price*0.10, 0
+ );
+ document.getElementById('stress').textContent = '−'+eur(stress);
+
+ const alloc = document.getElementById('allocation');
+ const keys = Object.keys(positions).filter(k => positions[k].qty > 1e-8);
+
+ alloc.innerHTML =
+  `<div class="allocrow">
+    <div class="allochead">
+     <span>Efectivo</span>
+     <strong>${eur(cash)} · ${pct(cash/total)}</strong>
+    </div>
+    <div class="bar">
+     <div class="fill" style="width:${Math.max(0,Math.min(100,cash/total*100))}%;background:#a8b5ad"></div>
+    </div>
+   </div>` +
+  (keys.map(k => {
+   let p = positions[k], v = p.qty*p.price;
+   return `<div class="allocrow">
+    <div class="allochead">
+     <span>${safe(k)}</span>
+     <strong>${eur(v)} · ${pct(v/total)}</strong>
+    </div>
+    <div class="bar">
+     <div class="fill" style="width:${Math.min(100,v/total*100)}%"></div>
+    </div>
+   </div>`;
+  }).join('') || '');
+
+ document.getElementById('advice').innerHTML =
+  exposure() > MAX_EXPOSURE
+   ? `<div class="notice warn"><strong>Exposición por encima del límite</strong><br>La cartera supera el ${pct(MAX_EXPOSURE)} en activos de mercado. Considera no añadir riesgo y revisar la asignación.</div>`
+   : cash < START*0.3
+    ? `<div class="notice warn"><strong>Reserva de efectivo reducida</strong><br>Queda menos del 30 % del capital inicial en efectivo. Valora mantener liquidez antes de nuevas compras.</div>`
+    : `<div class="notice"><strong>Postura actual: prudente</strong><br>La exposición es ${pct(exposure())}, ${exposure()===0?'sin riesgo de mercado por posiciones abiertas':'dentro del límite orientativo del '+pct(MAX_EXPOSURE)}. No hay motivo para operar por operar; mantener efectivo también es una decisión.</div>`;
+
+ const pos = document.getElementById('positions');
+
+ pos.innerHTML = keys.length
+  ? `<table class="table">
+     <thead><tr><th>Activo</th><th>Unidades</th><th>Precio</th><th>Valor</th><th></th></tr></thead>
+     <tbody>${keys.map(k =>
+      `<tr>
+       <td><strong>${safe(k)}</strong></td>
+       <td>${positions[k].qty.toFixed(4)}</td>
+       <td>${eur(positions[k].price)}</td>
+       <td>${eur(positions[k].qty*positions[k].price)}</td>
+       <td><button class="secondary tinybtn" onclick="sellAll('${safe(k)}')">Vender todo</button></td>
+      </tr>`
+     ).join('')}</tbody>
+    </table>`
+  : '<div class="empty">No hay posiciones abiertas. El capital permanece en efectivo.</div>';
+
+ document.getElementById('history').innerHTML = history.length
+  ? `<table class="table">
+     <thead><tr><th>Hora</th><th>Operación</th><th>Activo</th><th>Importe</th><th>Resultado</th></tr></thead>
+     <tbody>${history.slice().reverse().map(h =>
+      `<tr>
+       <td>${h.time}</td>
+       <td>${h.side}</td>
+       <td>${safe(h.ticker)}</td>
+       <td>${eur(h.amount)}</td>
+       <td>${safe(h.note)}</td>
+      </tr>`
+     ).join('')}</tbody>
+    </table>`
+  : '<div class="empty">Aún no has realizado operaciones virtuales.</div>';
+
+ if (!importedSeries) {
+  points.push({label:'Actual',value:total});
+  if (points.length > 30) points.splice(1,1);
+ }
+
+ renderChart();
+}
+
+function log(side,ticker,amount,note) {
+ history.push({
+  time:new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
+  side,ticker,amount,note
+ });
+}
+
+function buy(ticker,price,amount) {
+ if (!ticker || !Number.isFinite(price) || price<=0 ||
+     !Number.isFinite(amount) || amount<=0) {
+  return alert('Introduce símbolo, precio e importe válidos.');
+ }
+
+ if (amount > cash+1e-8) {
+  return alert('No hay efectivo suficiente para esa compra.');
+ }
+
+ const current = positions[ticker]?.qty*positions[ticker]?.price || 0;
+
+ if ((current+amount)/equity() > MAX_EXPOSURE) {
+  return alert('Operación bloqueada por control de riesgo: este activo superaría el límite de exposición del 40 % del patrimonio.');
+ }
+
+ const qty = amount/price;
+ cash -= amount;
+
+ if (!positions[ticker]) positions[ticker] = {qty:0,price};
+
+ const old = positions[ticker];
+ const newQty = old.qty+qty;
+
+ old.price = (old.qty*old.price+amount)/newQty;
+ old.qty = newQty;
+
+ log('Compra',ticker,amount,`${qty.toFixed(4)} unidades`);
+ render();
+}
+
+function sellAll(ticker) {
+ let p = positions[ticker];
+ if (!p) return;
+
+ let amount = p.qty*p.price;
+ cash += amount;
+ delete positions[ticker];
+
+ log('Venta',ticker,amount,'Posición cerrada');
+ render();
+}
+
+document.getElementById('trade').onclick = () => {
+ const side = document.getElementById('side').value;
+ const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+ const price = Number(document.getElementById('price').value);
+ const amount = Number(document.getElementById('amount').value);
+
+ if (side === 'buy') return buy(ticker,price,amount);
+
+ const p = positions[ticker];
+ if (!p) return alert('No tienes esa posición en la cartera.');
+
+ const value = Math.min(amount,p.qty*price);
+ if (value<=0) return alert('Importe no válido.');
+
+ const qty = value/price;
+ if (qty>p.qty+1e-6) return alert('La venta supera las unidades disponibles.');
+
+ p.qty -= qty;
+ cash += value;
+
+ if (p.qty<1e-6) delete positions[ticker];
+
+ log('Venta',ticker,value,`${qty.toFixed(4)} unidades`);
+ render();
+};
+
+document.getElementById('quote').onclick = async () => {
+ const t = document.getElementById('ticker').value.trim().toLowerCase().replace(/[^a-z0-9.-]/g,'');
+
+ if (!t) return alert('Introduce un símbolo. Para Stooq prueba formatos como spy.us o vwce.de.');
+
+ const status = document.getElementById('marketStatus');
+ status.textContent = 'Consultando proveedor…';
+
+ try {
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(t)}&f=sd2t2ohlcv&h&e=csv`;
+  const response = await fetch(url);
+
+  if (!response.ok) throw Error('Proveedor no disponible');
+
+  const text = await response.text();
+  const rows = text.trim().split(/\r?\n/);
+
+  if (rows.length<2) throw Error('Sin datos');
+
+  const cells = rows[1].split(',');
+  const price = Number(cells[6]);
+
+  if (!Number.isFinite(price) || price<=0 || cells[1]==='N/D') {
+   throw Error('Símbolo no reconocido o cotización no disponible');
+  }
+
+  document.getElementById('price').value = price;
+  status.textContent = `Cotización consultada: ${cells[1]} ${cells[2]}`;
+  document.getElementById('csvStatus').textContent = 'Precio obtenido de Stooq; comprueba moneda y símbolo.';
+
+ } catch(e) {
+  status.textContent = 'Cotización no disponible';
+  alert('No se pudo obtener la cotización automáticamente. Puede ser por restricciones del navegador (CORS), símbolo o proveedor. Introduce el precio manualmente o importa un CSV histórico.');
+ }
+};
+
+document.getElementById('scenario').onclick = () => {
+ Object.values(positions).forEach(p => p.price *= 0.9);
+ log('Escenario','CARTERA',invested(),'Caída hipotética del 10 % aplicada a todas las posiciones');
+ document.getElementById('marketStatus').textContent = 'Escenario hipotético aplicado';
+ render();
+};
+
+document.getElementById('startSimulation').onclick = () => {
+ const amount = Number(document.getElementById('initialCapital').value);
+
+ if (!Number.isFinite(amount) || amount<=0) {
+  return alert('Introduce un capital inicial mayor que 0 €.');
+ }
+
+ if ((history.length || Object.keys(positions).length) &&
+     !confirm('Cambiar el capital reiniciará las posiciones y el historial. ¿Continuar?')) {
+  return;
+ }
+
+ START = amount;
+ cash = START;
+ positions = {};
+ history = [];
+ points = [{label:'Inicio',value:START}];
+ importedSeries = null;
+
+ document.getElementById('marketStatus').textContent = 'Simulación iniciada con '+eur(START);
+ document.getElementById('csvStatus').textContent = 'Sin archivo importado';
+
+ render();
+};
+
+document.getElementById('reset').onclick = () => {
+ if (!confirm('¿Reiniciar y borrar las operaciones de esta sesión?')) return;
+
+ cash = START;
+ positions = {};
+ history = [];
+ points = [{label:'Inicio',value:START}];
+ importedSeries = null;
+
+ document.getElementById('marketStatus').textContent = 'Datos de mercado: sin actualizar';
+ render();
+};
+
+document.getElementById('csv').onchange = async e => {
+ const file = e.target.files[0];
+ if (!file) return;
+
+ const txt = await file.text();
+ const lines = txt.trim().split(/\r?\n/);
+
+ if (lines.length<2) return alert('El CSV no contiene suficientes filas.');
+
+ const headers = lines[0].split(/[;,]/)
+  .map(x => x.trim().toLowerCase().replace(/"/g,''));
+
+ let vi = headers.findIndex(x => /close|valor|value|precio|price|adj close|último/.test(x));
+ let di = headers.findIndex(x => /date|fecha|time|día/.test(x));
+
+ if (vi<0) vi = headers.length-1;
+
+ let vals = lines.slice(1).map(line => {
+  let c = line.split(/[;,]/).map(x => x.trim().replace(/"/g,''));
+  let v = Number(c[vi]?.replace(',','.'));
+  return {label:c[di]||'',value:v};
+ }).filter(x => Number.isFinite(x.value) && x.value>0);
+
+ if (vals.length<2) {
+  return alert('No se pudieron reconocer al menos dos valores numéricos. Comprueba las columnas de fecha y cierre.');
+ }
+
+ importedSeries = vals.slice(-100);
+ document.getElementById('csvStatus').textContent = `${importedSeries.length} puntos importados`;
+ document.getElementById('marketStatus').textContent = 'Serie histórica CSV cargada';
+
+ renderChart();
+};
+
+render();
+</script>
+</body>
+</html>
